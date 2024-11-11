@@ -72,6 +72,17 @@ class TypeDatabase(Base):
     ID_TYPE_DATABASE = Column(Integer, primary_key=True)
     NAME_DATABASE = Column(String(100), nullable=False)
 
+class Integracao(Base):
+    __tablename__ = 'TB_INTEGRACAO'
+    ID_INTEGRACAO = Column(Integer, primary_key=True)
+    DS_NOME_INTEGRACAO = Column(String(100), nullable=False)
+    CHAVE_INTEGRACAO_ONE = Column(String(2000), nullable=False)
+    CHAVE_INTEGRACAO_TWO = Column(String(2000), nullable=False)
+    ID_ORGANIZACAO = Column(Integer, ForeignKey('TB_ORGANIZACAO.ID_ORGANIZACAO'), nullable=False)
+
+    class Config:
+        orm_mode = True
+        
 class Database(Base):
     __tablename__ = 'TB_DATABASE'
     ID_DATABASE = Column(Integer, primary_key=True)
