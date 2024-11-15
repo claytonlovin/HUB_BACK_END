@@ -1,6 +1,7 @@
 import os
 import json
 from fastapi import WebSocket, WebSocketDisconnect, APIRouter, HTTPException, Depends
+from decimal import Decimal
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 from langchain_community.agent_toolkits.sql.base import create_sql_agent
@@ -48,26 +49,30 @@ def get_database_connection(id_grupo: int, db: Session):
     except Exception as e:
         print(f"Erro ao obter conexão com o banco de dados: {e}")
         raise HTTPException(status_code=500, detail="Erro interno ao tentar conectar ao banco de dados.")
-
+    
+    
 @router.websocket("/ws/chat/{id_grupo}")
 async def websocket_endpoint(websocket: WebSocket, id_grupo: int, db: Session = Depends(get_db)):
     await websocket.accept()
     try:
         db_connection = get_database_connection(id_grupo, db)
+        print("Tabelas disponíveis:", db_connection.get_table_names())
 
         llm = ChatOpenAI(
             model="gpt-3.5-turbo-16k",
-            temperature=0.0,
+            temperature=0.7,
             openai_api_key=openai_api_key,
             openai_organization=openai_organization,
             verbose=True,
         )
 
-        toolkit = SQLDatabaseToolkit(db=db_connection, llm=llm)
+        relevant_tables = db_connection.get_table_names()
+        toolkit = SQLDatabaseToolkit(db=db_connection, llm=llm, tables=relevant_tables, schema="ERP")
         agent_executor = create_sql_agent(
             llm=llm,
             toolkit=toolkit,
-            verbose=True
+            verbose=True,
+            handle_parsing_errors=True
         )
 
         while True:
@@ -77,25 +82,36 @@ async def websocket_endpoint(websocket: WebSocket, id_grupo: int, db: Session = 
                 if data.lower() == "sair":
                     break
 
-                # Garante que o modelo entenda que a resposta deve ser traduzida para português
-                query = f"Por favor, retorne a resposta para a seguinte consulta SQL em português: {data}"
-                resposta = agent_executor.run(query)
+                query = (
+                    f"Você está conectado a um banco de dados do grupo {id_grupo}. "
+                    f"Responda apenas usando informações das tabelas diretamente relacionadas. "
+                    f"Por favor, retorne a resposta para a seguinte consulta em português: {data}"
+                )
 
-                if "gráfico" in data.lower():
-                    chart_data = format_data_for_chart(resposta)
-                    await websocket.send_text(json.dumps(chart_data))
-                else:
-                    traduzido_para_pt = traduzir_para_portugues(resposta)
-                    await websocket.send_text(traduzido_para_pt)
+                resposta_bruta = agent_executor.run(query)
+                resposta_formatada = formatar_resposta_bruta(resposta_bruta)
+
+                prompt_contextualizado = (
+                    f"Pergunta do usuário: {data}\n"
+                    f"Resposta do banco de dados: {resposta_formatada}\n\n"
+                    "Por favor, gere uma resposta natural e contextualizada para o usuário com base nos dados e na pergunta."
+                )
+
+                resposta_obj = llm.invoke(prompt_contextualizado)
+                resposta_final = resposta_obj.content
+
+                await websocket.send_text(resposta_final)
 
             except WebSocketDisconnect:
                 print("Cliente desconectado.")
                 break
+            except ValueError as ve:
+                print(f"Erro de formatação: {str(ve)}")
+                await websocket.send_text("Erro ao formatar a resposta. Tente novamente.")
             except Exception as e:
-                # Captura o erro, envia uma mensagem ao cliente e mantém o WebSocket aberto
                 print(f"Erro ao processar: {str(e)}")
                 await websocket.send_text("Ocorreu um erro ao processar sua solicitação. Tente novamente.")
-                continue  # Mantém o loop funcionando após o erro
+                continue  
     except Exception as e:
         print(f"Erro no WebSocket: {str(e)}")
         try:
@@ -105,32 +121,12 @@ async def websocket_endpoint(websocket: WebSocket, id_grupo: int, db: Session = 
     finally:
         print("Conexão WebSocket encerrada.")
 
-def format_data_for_chart(resposta):
-    categories = []
-    values = []
-
-    for entry in resposta:
-        categories.append(entry['month'])
-        values.append(entry['value'])
-
-    return {
-        "options": {
-            "chart": {
-                "id": "dynamic-chart",
-            },
-            "xaxis": {
-                "categories": categories,
-            },
-            "title": {
-                "text": "Gráfico Dinâmico",
-                "align": "center",
-            },
-        },
-        "series": [{
-            "name": "Valores Dinâmicos",
-            "data": values,
-        }],
-    }
-
-def traduzir_para_portugues(texto):
-    return {texto}
+def formatar_resposta_bruta(resposta):
+    if isinstance(resposta, list):
+        resposta_formatada = []
+        for item in resposta:
+            chave = item[0]
+            valor = float(item[1]) if isinstance(item[1], Decimal) else item[1]
+            resposta_formatada.append(f"{chave}: {valor}")
+        return "; ".join(resposta_formatada)
+    return str(resposta)

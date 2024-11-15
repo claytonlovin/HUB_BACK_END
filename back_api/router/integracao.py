@@ -20,12 +20,17 @@ from typing import List
 @router.post("/integracao/", tags=["Integracoes"], response_model=IntegracaoResponse)
 async def create_integracao(IntegracaoCreate: IntegracaoCreate, db: Session = Depends(get_db), user: User = Depends(get_auth_user)):
     try:
-        if user_permition(user, "integracoes"):
-            new_integracao = Integracao(**IntegracaoCreate.dict())
+        if user_permition(user.ID_USUARIO, db):
+            DS_NOME_INTEGRACAO = IntegracaoCreate.DS_NOME_INTEGRACAO,
+            CHAVE_INTEGRACAO_ONE = IntegracaoCreate.CHAVE_INTEGRACAO_ONE,
+            CHAVE_INTEGRACAO_TWO = IntegracaoCreate.CHAVE_INTEGRACAO_TWO,
+            ID_ORGANIZACAO = user.ID_ORGANIZACAO
+            new_integracao = Integracao(DS_NOME_INTEGRACAO=DS_NOME_INTEGRACAO, CHAVE_INTEGRACAO_ONE=CHAVE_INTEGRACAO_ONE, CHAVE_INTEGRACAO_TWO=CHAVE_INTEGRACAO_TWO, ID_ORGANIZACAO=ID_ORGANIZACAO)
             db.add(new_integracao)
             db.commit()
-            db.refresh(new_integracao) 
+            db.refresh(new_integracao)
             return new_integracao
+            
         else:
             raise HTTPException(status_code=403, detail='Sem permissão para criar integracao')
     except Exception as e:
@@ -43,13 +48,10 @@ async def get_integracao(user: User = Depends(get_auth_user), db: Session = Depe
     except Exception as e:
         return {"erro": str(e)}
     
-
-
-
 @router.delete("/integracao/{id_integracao}",  tags=["Integracoes"])
 async def delete_integracao(id_integracao: int, user: User = Depends(get_auth_user), db: Session = Depends(get_db)):
     try:
-        if user_permition(user, "integracoes"):
+        if user_permition(user.ID_USUARIO, db):
             integracao = db.query(Integracao).filter(Integracao.ID_INTEGRACAO == id_integracao).first()
             if integracao is None:
                 raise HTTPException(status_code=404, detail='Integração nao encontrada')

@@ -12,23 +12,19 @@ from authentication.securityDefinition import get_auth_user, user_permition
 import datetime
 import hashlib
 
-@router.get('/ListDatabase', tags=['Database'])
-async def list_database(user: User = Depends(get_auth_user), db: Session = Depends(get_db)):
+@router.get('/ListDatabase/{id_grupo}', tags=['Database'])
+async def list_database( id_grupo: int,user: User = Depends(get_auth_user), db: Session = Depends(get_db)):
     try:
-        # Verifica se o usuário tem permissão
         if user_permition(user.ID_USUARIO, db):
-            # Junções explícitas com as condições definidas
             databases = db.query(Database).\
-                join(GroupUser, GroupUser.ID_GRUPO == Database.ID_GRUPO).\
+                join(GroupUser, GroupUser.ID_GRUPO == id_grupo).\
                 join(User, GroupUser.ID_USUARIO == User.ID_USUARIO).\
                 filter(
-                    GroupUser.ID_USUARIO == user.ID_USUARIO,
                     User.FL_ADMINISTRADOR == True
                 ).all()
         else:
             return HTTPException(status_code=401, detail="Unauthorized")
         
-        # Retorna os dados serializados
         return JSONResponse(status_code=200, content=[db_instance.to_dict() for db_instance in databases])
 
     except Exception as e:
@@ -64,10 +60,9 @@ async def create_database(database: DatabaseCreate, user: User = Depends(get_aut
 @router.put('/UpdateDatabase', tags=['Database'])
 async def update_database(database: DatabaseUpdate, user: User = Depends(get_auth_user), db: Session = Depends(get_db)):
     try:
-        # Verifica se o usuário tem permissão
         if user_permition(user.ID_USUARIO, db):
-            # Junções explícitas com as condições definidas
             db_database = db.query(Database).filter(Database.ID_DATABASE == database.ID_DATABASE).first()
+            db_database.ID_DATABASE = database.ID_DATABASE
             db_database.ID_GRUPO = database.ID_GRUPO
             db_database.IP_CONNECTION = database.IP_CONNECTION
             db_database.PORT_CONNECTION = database.PORT_CONNECTION
@@ -78,7 +73,7 @@ async def update_database(database: DatabaseUpdate, user: User = Depends(get_aut
             db.refresh(db_database)
             return JSONResponse(status_code=200, content=db_database.to_dict()) 
 
-        else:
+        else: 
             return HTTPException(status_code=401, detail="Unauthorized")
 
     except Exception as e:
