@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  back_api:
+    build: .
+    networks:
+      - petalflow
+    ports:
+      - "8000:8000"
+
+networks:
+  petalflow:
+    external: true

@@ -9,6 +9,9 @@ class UserCreate(BaseModel):
     name: str
     password: str
 
+    class Config:
+        orm_mode = True
+
 class UsuarioSystem(BaseModel):
     NOME_USUARIO: str
     DS_TELEFONE: str
@@ -17,4 +20,7 @@ class UsuarioSystem(BaseModel):
     DS_SENHA: str
     FL_ADMINISTRADOR: bool = False
     FL_PROPRIETARIO_CONTA:  bool = False
+
+    class Config:
+        orm_mode = True
 
