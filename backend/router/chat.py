@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from langchain_community.agent_toolkits.sql.base import create_sql_agent
 from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
 from langchain_community.utilities import SQLDatabase
-from models.models import Database
+from models.models import Database, Relatorio
 from config.configdb import get_db
 from langchain_openai import ChatOpenAI
 
@@ -18,9 +18,13 @@ load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 openai_organization = os.getenv("OPENAI_ORGANIZATION")
 
-def get_database_connection(id_grupo: int, db: Session):
+def get_database_connection(id_relatorio: int, db: Session):
     try:
-        database_config = db.query(Database).filter(Database.ID_GRUPO == id_grupo).first()
+        get_group = db.query(Relatorio).filter(Relatorio.ID_RELATORIO == id_relatorio).first()
+        if not get_group:
+            raise HTTPException(status_code=404, detail="Grupo nao encontrado") 
+        database_config = db.query(Database).filter(Database.ID_GRUPO == get_group.ID_GRUPO).first()
+
         if not database_config:
             raise HTTPException(status_code=404, detail="Conexão com o banco de dados não encontrada para o grupo fornecido.")
 
@@ -51,11 +55,11 @@ def get_database_connection(id_grupo: int, db: Session):
         raise HTTPException(status_code=500, detail="Erro interno ao tentar conectar ao banco de dados.")
     
     
-@router.websocket("/ws/chat/{id_grupo}")
-async def websocket_endpoint(websocket: WebSocket, id_grupo: int, db: Session = Depends(get_db)):
+@router.websocket("/ws/chat/{id_relatorio}")
+async def websocket_endpoint(websocket: WebSocket, id_relatorio: int, db: Session = Depends(get_db)):
     await websocket.accept()
     try:
-        db_connection = get_database_connection(id_grupo, db)
+        db_connection = get_database_connection(id_relatorio, db)
         print("Tabelas disponíveis:", db_connection.get_table_names())
 
         llm = ChatOpenAI(
@@ -83,7 +87,7 @@ async def websocket_endpoint(websocket: WebSocket, id_grupo: int, db: Session = 
                     break
 
                 query = (
-                    f"Você está conectado a um banco de dados do grupo {id_grupo}. "
+                    f"Você está conectado a um banco de dados do grupo {id_relatorio}. "
                     f"Responda apenas usando informações das tabelas diretamente relacionadas. "
                     f"Por favor, retorne a resposta para a seguinte consulta em português: {data}"
                 )
