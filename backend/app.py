@@ -24,6 +24,7 @@ origins = [
     "http://127.0.0.1:8000",
     "https://petalflow.com.br",
     "https://145.223.94.206",
+    "https://app.petalflow.com.br"
     "145.223.94.206"
     ]
 
