@@ -5,7 +5,7 @@ import gunicorn
 #  CONFIG
 from config.configdb import engine, Base, SessionLocal
 
-from router import  authentication, company, groups, report, user, database, chat, integracao
+from router import  authentication, company, groups, report, user, database, chat_teste, integracao
 
 app = FastAPI(
          openapi_url="/api/openapi.json",
@@ -57,7 +57,7 @@ app.include_router(report.router, prefix="/api")
 app.include_router(user.router, prefix="/api")
 app.include_router(company.router, prefix="/api")
 app.include_router(database.router, prefix="/api")
-app.include_router(chat.router, prefix="/api")
+app.include_router(chat_teste.router, prefix="/api")
 app.include_router(integracao.router, prefix="/api")
 
 # EXECUÇÃO DO SERVIDOR
