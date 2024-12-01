@@ -1,18 +1,19 @@
 
 # IMPORT EXTERNOS
 from config.configdb import *
-from schemas.loginSchemas import UserLoginRequest, UserLoginResponse
+from schemas.loginSchemas import UserLoginRequest, UserLoginResponse, UserLogingoogleRequest
 from schemas.createUserSchemas import UserCreate
 #JWT TOKEN
 from authentication.auths import create_access_token
 # IMPORT INTERAL
 from fastapi.responses import JSONResponse
 from models.models import User, Organizacao
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from fastapi.params import Body
 from sqlalchemy import text
+import requests
 import stripe 
 import datetime
 import jwt
@@ -21,52 +22,43 @@ import hashlib
 
 # IMPORT GOOGLE
 from google.oauth2 import id_token
-from google.auth.transport import requests
+
+load_dotenv()
+
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_SECRET_KEY = os.getenv("GOOGLE_SECRET_KEY")
 
 router = APIRouter()
 
-@router.post('/google-login', response_model=UserLoginResponse, tags=['Authentication'])
-def google_login(google_token: str = Body(...)):
-    """
-    Autenticação de usuário via Google. Recebe um token JWT do Google e verifica se o e-mail está cadastrado no banco.
-    """
-    try:
-        id_info = id_token.verify_oauth2_token(google_token, requests.Request(), "369932515787-k5i0lh9apkctn310494flhciubjn2asi.apps.googleusercontent.com")
-        
-        email = id_info.get("email")
-        name = id_info.get("name")
-        picture = id_info.get("picture")
 
-        if not email:
-            raise HTTPException(status_code=400, detail="Token inválido ou e-mail ausente.")
+@router.post('/google_login', response_model=UserLoginResponse)
+async def google_login(data: UserLogingoogleRequest = Body(...), db: Session = Depends(get_db)):
+    response = requests.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={data.idToken}")
+    if response.status_code != 200:
+        raise HTTPException(status_code=400, detail="Token inválido")
 
-        with SessionLocal() as session:
-            user = session.query(User).filter(User.DS_EMAIL == email).first()
-            if not user:
-                raise HTTPException(status_code=404, detail="Usuário não encontrado. Por favor, cadastre-se.")
+    dataUser = response.json()
+    email = dataUser.get("email")
+    if not email or not email.endswith("@gmail.com"):
+        raise HTTPException(status_code=400, detail="E-mail inválido ou não é Gmail")
 
-            org = session.query(Organizacao).filter(Organizacao.ID_ORGANIZACAO == user.ID_ORGANIZACAO).first()
-            if not org or not org.FL_ATIVO:
-                raise HTTPException(status_code=403, detail="Organização inativa. Entre em contato com o suporte.")
+    user = db.query(User).filter(User.DS_EMAIL == email).first()
 
-            user_info = {
-                'id_user': user.ID_USUARIO,
-                'nome_user': user.NOME_USUARIO,
-                'email_user': user.DS_EMAIL,
-                'id_company': user.ID_ORGANIZACAO,
-                'administrator': user.FL_ADMINISTRADOR,
-                'fl_proprietario_conta': user.FL_PROPRIETARIO_CONTA,
-                'premium': org.PREMIUM
-            }
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
-            token = create_access_token(user_info)
-            response = UserLoginResponse(success=True, message="Autenticado com sucesso via Google", token=token, user_info=user_info)
-            return response
+    user_info = {
+        'id_user': user.ID_USUARIO,
+        'nome_user': user.NOME_USUARIO,
+        'email_user': user.DS_EMAIL,
+        'id_company': user.ID_ORGANIZACAO,
+        'administrator': user.FL_ADMINISTRADOR,
+        'fl_proprietario_conta': user.FL_PROPRIETARIO_CONTA
+    }
+    token = create_access_token(user_info)
+    response = UserLoginResponse(success=True, message='Autenticado com sucesso', token=token, user_info=user_info)
+    return response
 
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Token do Google inválido.")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 
 @router.post('/login', response_model=UserLoginResponse, tags=['Authentication'])
