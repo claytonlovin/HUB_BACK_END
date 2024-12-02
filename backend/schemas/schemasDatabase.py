@@ -8,6 +8,7 @@ class DatabaseCreate(BaseModel):
     USER_CONNECTION: str
     PASSWORD_CONNECTION: str
     DB_CONNECTION: str
+    ID_TYPE_DATABASE: int
    
 
 class DatabaseUpdate(BaseModel):

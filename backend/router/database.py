@@ -43,7 +43,8 @@ async def create_database(database: DatabaseCreate, user: User = Depends(get_aut
                 PORT_CONNECTION = database.PORT_CONNECTION,
                 USER_CONNECTION = database.USER_CONNECTION,
                 PASSWORD_CONNECTION = database.PASSWORD_CONNECTION,
-                DB_CONNECTION = database.DB_CONNECTION
+                DB_CONNECTION = database.DB_CONNECTION,
+                ID_TYPE_DATABASE = database.ID_TYPE_DATABASE
             )
             db.add(db_database)
             db.commit()

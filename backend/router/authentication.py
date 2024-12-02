@@ -31,7 +31,7 @@ GOOGLE_SECRET_KEY = os.getenv("GOOGLE_SECRET_KEY")
 router = APIRouter()
 
 
-@router.post('/google_login', response_model=UserLoginResponse)
+@router.post('/google_login', response_model=UserLoginResponse, tags=['Authentication'])
 async def google_login(data: UserLogingoogleRequest = Body(...), db: Session = Depends(get_db)):
     response = requests.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={data.idToken}")
     if response.status_code != 200:
