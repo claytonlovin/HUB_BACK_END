@@ -4,6 +4,7 @@ from schemas.createRelatorio import RelatorioBase, RelatorioCreate, RelatorioUpd
 from fastapi.responses import JSONResponse
 from fastapi import  HTTPException
 from models.models import User, Relatorio
+from controller.validatePaymentPlan import totalUserReport
 import jwt
 from sqlalchemy.orm import Session
 from fastapi import Depends, Header, HTTPException
@@ -88,7 +89,6 @@ async def create_report(relatorio: RelatorioCreate, user: User = Depends(get_aut
     try:
         if not user_permition(user.ID_USUARIO, db):
             raise HTTPException(status_code=403, detail='Sem permissão para criar relatório')
-        
         novo_relatorio = Relatorio(ID_GRUPO=relatorio.ID_GRUPO, DS_NOME_RELATORIO=relatorio.DS_NOME_RELATORIO, DS_LINK_RELATORIO=relatorio.DS_LINK_RELATORIO)
         db.add(novo_relatorio)
         db.commit()

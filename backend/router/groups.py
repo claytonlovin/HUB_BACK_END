@@ -11,6 +11,7 @@ from sqlalchemy import exists, and_
 from fastapi import Depends, Header, HTTPException
 # SECURITY
 from authentication.securityDefinition import get_auth_user, user_permition
+from controller.validatePaymentPlan import totalUserReport
 import jwt
 import datetime
 # CONFIG 
@@ -80,6 +81,9 @@ async def delete_group(grupo_id: int, current_user: Usuario = Depends(get_auth_u
 @router.post('/createGroup', tags=['Group_companies'])
 async def create_group(grupo: GrupoCreate, current_user: Usuario = Depends(get_auth_user), db: Session = Depends(get_db)):
     try:
+        # verificar se o total de grupo criado é menor que 1
+        if totalUserReport(current_user.ID_ORGANIZACAO, db)["is_valid"] == True:
+            raise HTTPException(status_code=403, detail='Adquiria o plano premium para criar novos grupos')
         usuario = db.query(User).filter(User.ID_USUARIO == current_user.ID_USUARIO).first()
         if usuario is None:
             raise HTTPException(status_code=401, detail='Usuário não autenticado')
