@@ -19,10 +19,10 @@ origins = [
     "http://127.0.0.1:3001",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "petalflow.com.br",
     "http://127.0.0.1:8000/login",
     "http://127.0.0.1:8000",
     "https://petalflow.com.br",
+    "https://petalflow.com.br:3000",
     "https://145.223.94.206",
     "https://app.petalflow.com.br",
     "145.223.94.206"
