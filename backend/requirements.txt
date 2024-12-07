@@ -38,6 +38,7 @@ langchain-openai==0.2.0
 langchain-text-splitters==0.3.0
 langsmith==0.1.120
 marshmallow==3.22.0
+mercadopago==2.2.3
 multidict==6.1.0
 mypy-extensions==1.0.0
 numpy==1.26.4
